@@ -170,6 +170,11 @@
                 const ctx = canvas.getContext('2d');
                 ctx.fillStyle = k === 'grass' ? '#4CAF50' : k === 'dirt' ? '#8B5A2B' : '#888';
                 ctx.fillRect(0,0,64,64);
+                // Draw a simple border to distinguish blocks
+                ctx.strokeStyle = "rgba(0,0,0,0.2)";
+                ctx.lineWidth = 4;
+                ctx.strokeRect(0,0,64,64);
+                
                 textures[k] = new THREE.CanvasTexture(canvas);
                 textures[k].magFilter = THREE.NearestFilter;
                 if(miniMesh) updateMini(); // refresh mini if fallback kicks in
@@ -412,19 +417,30 @@ f 6/15/6 5/4/6 1/3/6 2/16/6
             if (intersects.length > 0) {
                 const i = intersects[0];
                 const n = i.face.normal;
-                const p = i.point;
-                const placePos = new THREE.Vector3().copy(p).add(n.clone().multiplyScalar(0.5)).floor().addScalar(0.5);
-                
-                // Player collision check
+
+                // FIX: Instead of calculating from the floating-point intersection point (which can round incorrectly),
+                // we take the exact position of the existing block we hit, and add the normal vector.
+                // This ensures perfect grid alignment and prevents "floating" blocks.
+                const placePos = i.object.position.clone().add(n).round();
+
+                // Prevent placing inside the player
                 const playerPos = camera.position.clone();
-                playerPos.y -= PLAYER_HEIGHT / 2; // Center of player roughly
+                playerPos.y -= PLAYER_HEIGHT / 2;
                 
-                // Very simple distance check to prevent placing inside self
+                // Simple distance check: center of block vs player position
                 if (placePos.distanceTo(playerPos) > 1.0) {
-                    createBlock(placePos.x, placePos.y, placePos.z, selectedBlockType);
+                    // Check if a block already exists at this exact position to avoid overlaps
+                    const exists = objects.some(obj => 
+                        obj.position.equals(placePos)
+                    );
+                    
+                    if (!exists) {
+                        createBlock(placePos.x, placePos.y, placePos.z, selectedBlockType);
+                    }
                 }
             }
         }
+
 
         function removeBlock() {
             raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
@@ -511,23 +527,20 @@ f 6/15/6 5/4/6 1/3/6 2/16/6
                     canJump = true;
                 }
                 
-                // Simple floor collision
-                // We just assume the ground is solid below a certain point if not raycasting feet
-                // For this simple demo, we rely on the generateWorld spawn. 
-                // Adding a basic floor check:
                 // --- FIXED FLOOR COLLISION ---
-              const feetPos = camera.position.clone();
-              raycaster.set(feetPos, new THREE.Vector3(0,-1,0));
-              const hits = raycaster.intersectObjects(objects);
-              if(hits.length>0){
-                  const groundY = hits[0].point.y + 0.01; // slightly above block
-                  if(camera.position.y <= groundY + PLAYER_HEIGHT){
-                      velocity.y = 0;
-                      camera.position.y = groundY + PLAYER_HEIGHT;
-                      canJump = true;
-                  }
-              }
-              camera.position.y += velocity.y * delta;
+                const feetPos = camera.position.clone();
+                raycaster.set(feetPos, new THREE.Vector3(0,-1,0));
+                const hits = raycaster.intersectObjects(objects);
+                if(hits.length>0){
+                    const groundY = hits[0].point.y + 0.01; // slightly above block
+                    // Check if falling and close to ground
+                    if(camera.position.y <= groundY + PLAYER_HEIGHT && velocity.y <= 0){
+                        velocity.y = 0;
+                        camera.position.y = groundY + PLAYER_HEIGHT;
+                        canJump = true;
+                    }
+                }
+                camera.position.y += velocity.y * delta;
 
             }
             prevTime = time;
