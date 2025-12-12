@@ -1,4 +1,4 @@
-**ZahiCraft** — Remastered is a browser-based, block-building 3D game inspired by sandbox classics. It lets players explore and interact with a simple world where you can move, jump, place, and remove blocks to build your own environments — all in the browser with no installation required. 
+**ZahiCraft** — Remastered is a browser-based, block-building 3D game inspired by sandbox classics made by HTML, some CSS and Three.JS, It lets players explore and interact with a simple world where you can move, jump, place, and remove blocks to build your own environments — all in the browser with no installation required. 
 zahicraft.onrender.com
 
 **🚀 Features:**
