@@ -462,17 +462,9 @@
         function loadTexture(path, fallbackColor) {
             if (loadedTextures[path]) return loadedTextures[path];
 
-            const tex = loader.load(
-                path,
-                undefined,
-                undefined,
-                function (err) {
-                    console.warn(`Texture failed: ${path}, using fallback.`);
-                    const fallback = createFallbackTexture(fallbackColor);
-                    tex.image = fallback.image;
-                    tex.needsUpdate = true;
-                }
-            );
+            // FORCE COLOR MODE: Generate texture from color only
+            const tex = createFallbackTexture(fallbackColor);
+
             tex.magFilter = THREE.NearestFilter;
             tex.minFilter = THREE.NearestFilter;
             tex.colorSpace = THREE.SRGBColorSpace;
