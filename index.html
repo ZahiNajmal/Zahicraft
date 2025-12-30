@@ -251,6 +251,43 @@
             color: #fff;
         }
 
+        /* --- Water Overlay --- */
+        #water-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 30, 100, 0.4);
+            pointer-events: none;
+            z-index: 55;
+            /* Below UI but above world */
+            backdrop-filter: blur(2px);
+        }
+
+        /* --- Game Over Screen --- */
+        #game-over {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(100, 0, 0, 0.8);
+            z-index: 3000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            text-align: center;
+        }
+
+        #game-over h1 {
+            font-size: 80px;
+            margin: 0;
+            text-shadow: 4px 4px #000;
+        }
+
+        #game-over p {
+            font-size: 30px;
+            margin-bottom: 30px;
+        }
+
         #loading-screen::before {
             content: '';
             position: absolute;
@@ -326,6 +363,16 @@
         </div>
     </div>
 
+    <!-- Water Overlay -->
+    <div id="water-overlay"></div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over">
+        <img src="assets/you_died.png" alt="Dead" style="width: 500px; height: 100px;">
+        <p>You tried to swim in lava.</p>
+        <div class="btn" onclick="location.reload()">Respawn</div>
+    </div>
+
     <!-- Game UI -->
     <div id="ui-layer">
         <div id="crosshair"></div>
@@ -380,6 +427,7 @@
         let camera, scene, renderer, controls;
         let raycaster;
         const objects = []; // All collidable blocks
+        const worldData = {}; // Spatial map: "x,y,z" -> type
 
         // Mini Block Globals
         let miniScene, miniCamera, miniRenderer, miniMesh;
@@ -455,7 +503,9 @@
                 side: { path: 'assets/textures/groundSnow.png', color: '#FFFFFF' },
                 bottom: { path: 'assets/textures/ground.png', color: '#684022' }
             },
-            wood: { all: 'assets/textures/groundMud.png', color: '#c4a98d' }
+            wood: { all: 'assets/textures/groundMud.png', color: '#c4a98d' },
+            water: { all: 'assets/textures/water.png', color: '#0000FF', transparent: true },
+            lava: { all: 'assets/textures/lava01.png', color: '#FF4500' }
         };
 
         const loadedTextures = {}; // Cache
@@ -613,10 +663,12 @@
         function generateWorld() {
             const min_height = -5;
             let startHeight = 0;
-            const size = 16;
+            // Random size between 24 and 48 (smaller for performance)
+            const size = Math.floor(Math.random() * 25) + 24;
+            console.log("Generated World Size Radius:", size);
 
-            for (let x = -size; x < size; x++) {
-                for (let z = -size; z < size; z++) {
+            for (let x = -size; x <= size; x++) {
+                for (let z = -size; z <= size; z++) {
                     let noise = Math.sin(x * 0.3) + Math.cos(z * 0.3);
                     let height = Math.floor(noise * 2);
 
@@ -631,7 +683,68 @@
                     }
                 }
             }
+
+            generatePools(size, min_height);
+
             camera.position.set(0, startHeight + PLAYER_HEIGHT + 2, 0);
+        }
+
+        function generatePools(worldSize, minHeight) {
+            const numPools = Math.floor(worldSize / 4); // More pools for bigger worlds
+
+            for (let i = 0; i < numPools; i++) {
+                // User requested NO WATER.
+                // Only generate lava (approx 30% chance per iteration, same as before)
+                if (Math.random() > 0.3) continue; // Skip water slots
+                const type = 'lava';
+
+                // Random position within world bounds
+                const px = Math.floor((Math.random() * worldSize * 2) - worldSize);
+                const pz = Math.floor((Math.random() * worldSize * 2) - worldSize);
+
+                // Don't spawn on spawn point
+                if (Math.abs(px) < 5 && Math.abs(pz) < 5) continue;
+
+                // Find surface height at center
+                // Simple heuristic: look from top down or just use the noise function again if available
+                // To correspond with generation, we can re-calculate noise
+                let noise = Math.sin(px * 0.3) + Math.cos(pz * 0.3);
+                let py = Math.floor(noise * 2);
+
+                const radius = Math.floor(Math.random() * 3) + 2; // 2-4 radius
+
+                for (let x = -radius; x <= radius; x++) {
+                    for (let z = -radius; z <= radius; z++) {
+                        if (x * x + z * z > radius * radius) continue; // Circle
+
+                        const wx = px + x;
+                        const wz = pz + z;
+
+                        // Re-calc height for this neighbor
+                        let n = Math.sin(wx * 0.3) + Math.cos(wz * 0.3);
+                        let h = Math.floor(n * 2);
+
+                        // Carve down a bit or replace surface
+                        // Strategy: Replace top block with fluid, and maybe 1 below if it's solid
+                        // Remove existing blocks at this col
+                        const key = `${wx},${h},${wz}`;
+                        const existing = worldData[key];
+
+                        // Only replace valid blocks
+                        if (existing) {
+                            removeBlockAt(wx, h, wz); // Remove top block (grass)
+                            createBlock(wx, h - 1, wz, type); // Place fluid one block down? 
+                            // Or just replace the top block to make surface pools?
+                            // Let's replace the top block h with fluid, and ensure h-1 is also fluid or solid
+                            // Actually, let's just place fluid at h.
+
+                            // Better pool look: Dig out 1 layer
+                            removeBlockAt(wx, h, wz);
+                            createBlock(wx, h - 1, wz, type);
+                        }
+                    }
+                }
+            }
         }
 
 
@@ -642,7 +755,22 @@
             mesh.userData = { isBlock: true, type: type };
             scene.add(mesh);
             objects.push(mesh);
+            worldData[`${x},${y},${z}`] = type;
             return mesh;
+        }
+
+        function removeBlockAt(x, y, z) {
+            const key = `${x},${y},${z}`;
+            if (!worldData[key]) return;
+
+            // Find object
+            const obj = objects.find(o => o.position.x === x && o.position.y === y && o.position.z === z);
+            if (obj) {
+                scene.remove(obj);
+                const idx = objects.indexOf(obj);
+                if (idx > -1) objects.splice(idx, 1);
+            }
+            delete worldData[key];
         }
 
         // --- GAMEPLAY LOGIC ---
@@ -735,10 +863,11 @@
 
             if (intersects.length > 0) {
                 const obj = intersects[0].object;
-                if (obj.userData.type !== 'bedrock') {
+                if (obj.userData.type !== 'bedrock' && obj.userData.type !== 'water' && obj.userData.type !== 'lava') {
                     scene.remove(obj);
                     const idx = objects.indexOf(obj);
                     if (idx > -1) objects.splice(idx, 1);
+                    delete worldData[`${obj.position.x},${obj.position.y},${obj.position.z}`];
                 }
             }
         }
@@ -800,56 +929,144 @@
             const delta = (time - prevTime) / 1000;
 
             if (controls.isLocked) {
-                // Inspect what block is below for friction
-                const feetPos = camera.position.clone();
-                raycaster.set(feetPos, new THREE.Vector3(0, -1, 0));
-                // Limit raycast distance roughly to player height + checkBuffer
-                // Limit raycast distance roughly to player height + checkBuffer
-                // Limit raycast distance roughly to player height + checkBuffer
-                raycaster.far = PLAYER_HEIGHT + 0.5;
+                // --- 1. BLOCK CHECKS (Water/Lava) ---
+                const px = Math.round(camera.position.x);
+                // Check blocks at feet and head
+                const feetY = Math.round(camera.position.y - PLAYER_HEIGHT / 2);
+                const headY = Math.round(camera.position.y);
+                const pz = Math.round(camera.position.z);
+
+                // Use optional chaining or check existence
+                const blockFeet = worldData[`${px},${feetY},${pz}`];
+                const blockHead = worldData[`${px},${headY},${pz}`];
+
+                const inWater = (blockFeet === 'water' || blockHead === 'water');
+                const inLava = (blockFeet === 'lava' || blockHead === 'lava');
+
+                if (inLava) {
+                    document.exitPointerLock();
+                    document.getElementById('instructions').style.display = 'none';
+                    document.getElementById('ui-layer').style.display = 'none';
+                    document.getElementById('game-over').style.display = 'flex';
+                    gameStarted = false;
+                    return;
+                }
+
+                // --- 2. GROUND CHECK & BASE FRICTION ---
+                // We Raycast down to check for "Ground" (solids) for collision and friction
+                let friction = 10.0;
+                let onGround = false;
+                let groundY = -100;
+
+                raycaster.set(camera.position, new THREE.Vector3(0, -1, 0));
+                raycaster.far = PLAYER_HEIGHT + 0.5; // Slightly further than feet
                 const hits = raycaster.intersectObjects(objects);
 
-                let friction = 10.0; // Default
                 if (hits.length > 0) {
-                    // If standing on ice, slide more (less friction)
-                    if (hits[0].object.userData.type === 'ice') {
-                        friction = 0.5;
+                    // Find first solid block (ignore water/lava)
+                    const hit = hits.find(h => h.object.userData.type !== 'water' && h.object.userData.type !== 'lava');
+
+                    if (hit) {
+                        // "On Ground" if close enough
+                        if (hit.distance <= PLAYER_HEIGHT + 0.05) {
+                            onGround = true;
+                            groundY = hit.point.y + PLAYER_HEIGHT;
+
+                            // Ice Friction Check
+                            if (hit.object.userData.type === 'ice') {
+                                friction = 0.5;
+                            }
+                        }
                     }
                 }
 
+                // --- 3. WATER PHYSICS OVERRIDES ---
+                if (inWater) {
+                    friction = 5.0; // High linear drag in water
+                    // Show Overlay
+                    document.getElementById('water-overlay').style.display = 'block';
+                } else {
+                    document.getElementById('water-overlay').style.display = 'none';
+                }
+
+                // --- 4. APPLY VELOCITY DAMPING (Friction/Drag) ---
                 velocity.x -= velocity.x * friction * delta;
                 velocity.z -= velocity.z * friction * delta;
-                velocity.y -= GRAVITY * delta;
 
+                if (inWater) {
+                    // Vertical drag in water
+                    velocity.y -= velocity.y * 3.0 * delta;
+                }
+
+                // --- 5. GRAVITY & FLOATING ---
+                if (inWater) {
+                    // Floating Effect: Sine wave bobbing
+                    // We directly modify velocity.y to create a bobbing motion if not moving fast vertically
+                    const bobbing = Math.sin(time * 0.002) * 0.5; // Up/Down force
+
+                    // Only apply bobbing if we aren't jumping strongly
+                    if (Math.abs(velocity.y) < 2.0) {
+                        velocity.y += (bobbing - velocity.y) * delta * 2.0; // Softly pull towards bob speed
+                    }
+
+                    velocity.y -= GRAVITY * 0.05 * delta; // Very low gravity (sink slowly)
+                    canJump = true; // Allow infinite jumping (swimming up)
+                } else {
+                    velocity.y -= GRAVITY * delta; // Normal gravity
+                }
+
+                // --- 6. INPUT HANDLING ---
                 direction.z = Number(moveForward) - Number(moveBackward);
                 direction.x = Number(moveRight) - Number(moveLeft);
                 direction.normalize();
 
-                if (moveForward || moveBackward) velocity.z -= direction.z * SPEED * friction * delta;
-                if (moveLeft || moveRight) velocity.x -= direction.x * SPEED * friction * delta;
+                // Move speed depends on state
+                // "Go a little more slower than usual" -> 0.4 multiplier (was 0.6)
+                const currentSpeed = inWater ? SPEED * 0.4 : SPEED;
 
+                // Acceleration formula: speed * friction
+                if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed * friction * delta;
+                if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed * friction * delta;
+
+                // --- 7. APPLY MOVEMENT ---
                 controls.moveRight(-velocity.x * delta);
                 controls.moveForward(-velocity.z * delta);
+                camera.position.y += (velocity.y * delta);
 
-                if (camera.position.y < -10) {
-                    velocity.y = 0;
-                    camera.position.y = 10;
-                    canJump = true;
-                }
+                // --- 8. COLLISIONS & BOUNDS ---
 
-                // --- FIXED FLOOR COLLISION ---
-                // Reuse existing hits from friction check
-                if (hits.length > 0) {
-                    const groundY = hits[0].point.y + 0.01; // slightly above block
-                    // Check if falling and close to ground
-                    if (camera.position.y <= groundY + PLAYER_HEIGHT && velocity.y <= 0) {
-                        velocity.y = 0;
-                        camera.position.y = groundY + PLAYER_HEIGHT;
-                        canJump = true;
+                // Floor Collision (Prevent falling through ground)
+                // Applies if we are on ground AND (not in water OR we hit the bottom of the pool)
+                // If in water, we can swim down, but we shouldn't pass through solid blocks.
+                // The raycast detects *all* blocks. If check for solid?
+                // For simplified logic: Raycast hits everything. 
+                // If we are in water, we might be inside a water block. raycast ignores backfaces usually?
+                // Double-sided material? 
+                // Actually `intersectObjects` might hit the water block we are inside of?
+                // If we are inside a block, raycast origin is inside. Three.js Raycaster usually detects inside-out if configured or double sided.
+                // But our blocks are MeshLambert, usually FrontSide.
+                // If inside water block, raycast down will hit the *floor* block (dirt/sand).
+                // So this logic holds: "Ground" is the solid block below water.
+
+                if (onGround) {
+                    // If we are falling/sinking and hit the floor height
+                    if (camera.position.y < groundY && velocity.y <= 0) {
+                        camera.position.y = groundY;
+                        velocity.y = Math.max(0, velocity.y);
+                        // If not in water, this resets jump. If in water, jump is always true anyway.
+                        if (!inWater) canJump = true;
                     }
                 }
-                camera.position.y += velocity.y * delta;
+
+                // Respawn if fell out of world
+                if (camera.position.y < -30) {
+                    velocity.y = 0;
+                    camera.position.y = 40; // Teleport to sky
+                    velocity.x = 0;
+                    velocity.z = 0;
+                }
             }
+
             prevTime = time;
 
             // 2. Rotate Mini Block
