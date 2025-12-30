@@ -114,17 +114,24 @@
         }
 
         .btn:active {
-            transform: scale(0.98);
-            box-shadow: inset 4px 4px #222, inset -4px -4px #888;
+            border: 4px solid #333;
+            border-right-color: #aaa;
+            border-bottom-color: #aaa;
+            transform: translateY(2px);
+        }
+
+        .btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(1);
         }
 
         #version-info {
             position: fixed;
             bottom: 10px;
             left: 10px;
-            color: #fff;
-            font-size: 22px;
-            text-shadow: 2px 2px #000;
+            color: #aaa;
+            font-size: 20px;
         }
 
         /* --- Contact Modal --- */
@@ -134,72 +141,31 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: #4e4e4e;
-            border: 4px solid #000;
-            padding: 30px;
+            background: #333;
+            border: 4px solid #fff;
+            padding: 40px;
             z-index: 1100;
             width: 450px;
             max-width: 85vw;
             box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.5), inset -4px -4px #222, inset 4px 4px #888;
             text-align: center;
             color: #fff;
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.7);
         }
 
         #contact-modal h2 {
             margin-top: 0;
             font-size: 40px;
-            text-shadow: 2px 2px #000;
+            color: #ffff55;
         }
 
         #contact-modal p {
             font-size: 24px;
-            margin: 15px 0;
-            word-break: break-all;
+            margin: 20px 0;
         }
 
         #contact-modal a {
-            color: #aaaaff;
-            text-decoration: none;
-        }
-
-        #contact-modal a:hover {
-            text-decoration: underline;
-        }
-
-        /* Intro Screen Overlay (for the zooming logo animation) */
-        #intro-screen {
-            position: fixed;
-            inset: 0;
-            background: #000;
-            display: none;
-            /* Hidden by default, shown after menu */
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        #intro-screen img {
-            max-width: 80%;
-            max-height: 80%;
-            animation: zoomIn 3s forwards;
-            image-rendering: pixelated;
-        }
-
-        @keyframes zoomIn {
-            0% {
-                transform: scale(.1);
-                opacity: 1
-            }
-
-            80% {
-                transform: scale(2);
-                opacity: 1
-            }
-
-            100% {
-                transform: scale(2);
-                opacity: 0
-            }
+            color: #55ffff;
         }
 
         /* --- Game UI Overlay --- */
@@ -211,46 +177,47 @@
             position: fixed;
             left: 16px;
             top: 16px;
-            background: rgba(0, 0, 0, 0.6);
-            color: #fff;
-            padding: 10px;
-            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #eee;
+            padding: 15px;
+            border-radius: 4px;
             z-index: 60;
             pointer-events: none;
-            line-height: 1.5;
+            line-height: 1.4;
             font-size: 20px;
         }
 
-        /* Slot UI */
+        /* Hotbar */
         #ui-slots {
             position: fixed;
             left: 50%;
-            bottom: 18px;
+            bottom: 20px;
             transform: translateX(-50%);
             display: flex;
-            gap: 8px;
+            gap: 10px;
             z-index: 60;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
         }
 
         .slot {
             display: inline-flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            width: 64px;
-            height: 64px;
-            border: 3px solid #888;
-            background: rgba(0, 0, 0, 0.5);
+            width: 60px;
+            height: 60px;
+            border: 3px solid #555;
+            background: rgba(0, 0, 0, 0.6);
             color: #fff;
             cursor: pointer;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 14px;
-            text-align: center;
+            font-size: 20px;
             transition: all 0.1s;
         }
 
         .slot:hover {
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(100, 100, 100, 0.6);
         }
 
         .slot.active {
@@ -267,6 +234,60 @@
             width: 150px;
             height: 150px;
             z-index: 60;
+        }
+
+        /* --- Loading Screen --- */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: #8B5A2B;
+            background-size: 64px;
+            image-rendering: pixelated;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            color: #fff;
+        }
+
+        #loading-screen::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            /* Darken the dirt background */
+            z-index: -1;
+        }
+
+        .loading-title {
+            font-size: 40px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px #000;
+        }
+
+        .loading-subtitle {
+            font-size: 24px;
+            margin-bottom: 40px;
+            color: #ccc;
+            text-shadow: 2px 2px #000;
+        }
+
+        .progress-container {
+            width: 400px;
+            max-width: 80vw;
+            height: 20px;
+            border: 2px solid #fff;
+            background: #000;
+            position: relative;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #5C9E50;
+            /* Minecraft Green */
+            transition: width 0.1s linear;
         }
     </style>
 </head>
@@ -295,10 +316,13 @@
         <div class="btn" onclick="toggleContact(false)">Back</div>
     </div>
 
-    <!-- Intro Screen (Zooming Logo) -->
-    <div id="intro-screen">
-        <img src="assets/zahicraft.png" alt="ZahiCraft"
-            onerror="this.src='https://threejs.org/files/examples/textures/crate.gif'">
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loading-title">Loading level</div>
+        <div class="loading-subtitle">Building terrain</div>
+        <div class="progress-container">
+            <div id="loading-bar" class="progress-bar"></div>
+        </div>
     </div>
 
     <!-- Game UI -->
@@ -416,21 +440,21 @@
         // --- BLOCK CONFIGURATION ---
         const textureInfos = {
             grass: {
-                top: { color: '#5C9E50', tint: '#7CFC00' },
-                side: { color: '#684022' },
-                bottom: { color: '#684022' }
+                top: { path: 'assets/textures/ground.png', color: '#5C9E50', tint: '#7CFC00' },
+                side: { path: 'assets/textures/groundEarth.png', color: '#684022' },
+                bottom: { path: 'assets/textures/ground.png', color: '#684022' }
             },
-            dirt: { color: '#8B5A2B' },
-            stone: { color: '#888888' },
-            bedrock: { color: '#333333' },
-            brick: { color: '#A0522D' },
-            ice: { color: '#ADD8E6', transparent: true },
+            dirt: { all: 'assets/textures/ground.png', color: '#8B5A2B' },
+            stone: { all: 'assets/textures/Stone01.png', color: '#888888' },
+            bedrock: { all: 'assets/textures/stone07.png', color: '#333333' },
+            brick: { all: 'assets/textures/wallBrick01.png', color: '#A0522D' },
+            ice: { all: 'assets/textures/ice01.png', color: '#ADD8E6', transparent: true },
             snow: {
-                top: { color: '#FFFFFF' },
-                side: { color: '#FFFFFF' },
-                bottom: { color: '#684022' }
+                top: { path: 'assets/textures/snow.png', color: '#FFFFFF' },
+                side: { path: 'assets/textures/groundSnow.png', color: '#FFFFFF' },
+                bottom: { path: 'assets/textures/ground.png', color: '#684022' }
             },
-            wood: { color: '#c4a98d' }
+            wood: { all: 'assets/textures/groundMud.png', color: '#c4a98d' }
         };
 
         const loadedTextures = {}; // Cache
@@ -646,17 +670,37 @@
             const contact = document.getElementById('contact-modal');
             if (contact) contact.style.display = 'none';
 
-            // Show intro animation
-            const introScreen = document.getElementById('intro-screen');
-            introScreen.style.display = 'flex';
+            // Show Loading Screen
+            const loadingScreen = document.getElementById('loading-screen');
+            loadingScreen.style.display = 'flex';
 
-            // After 3 seconds (animation duration), hide intro and start game
-            setTimeout(() => {
-                introScreen.style.display = 'none';
-                gameStarted = true;
-                document.getElementById('ui-layer').style.display = 'block';
-                controls.lock();
-            }, 3000);
+            simulateLoading();
+        }
+
+        function simulateLoading() {
+            let progress = 0;
+            const bar = document.getElementById('loading-bar');
+
+            // Simulate loading steps (randomish increments)
+            const interval = setInterval(() => {
+                progress += Math.random() * 5;
+                if (progress > 100) progress = 100;
+
+                bar.style.width = progress + '%';
+
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    // Finished loading
+                    setTimeout(() => {
+                        const loadingScreen = document.getElementById('loading-screen');
+                        loadingScreen.style.display = 'none';
+
+                        gameStarted = true;
+                        document.getElementById('ui-layer').style.display = 'block';
+                        controls.lock();
+                    }, 500); // Short delay at 100%
+                }
+            }, 50); // Tick every 50ms
         }
 
         function selectBlock(type) {
@@ -825,6 +869,30 @@
             // 3. Render World
             renderer.render(scene, camera);
         }
+
+        function checkWallCollision() {
+            // Check collision at foot level and head level
+            const pos = camera.position.clone();
+            const directions = [
+                new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
+                new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)
+            ];
+
+            // We simulate a small radius by checking 4 directions
+            for (let i = 0; i < directions.length; i++) {
+                raycaster.set(pos, directions[i]);
+                raycaster.far = 0.3; // Wall distance
+                if (raycaster.intersectObjects(objects).length > 0) return true;
+
+                // Check feet
+                const feet = pos.clone();
+                feet.y -= (PLAYER_HEIGHT - 0.2);
+                raycaster.set(feet, directions[i]);
+                if (raycaster.intersectObjects(objects).length > 0) return true;
+            }
+            return false;
+        }
+
     </script>
 </body>
 
