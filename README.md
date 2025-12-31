@@ -40,3 +40,4 @@ You can try Zahicraft through this link:
 https://zahicraft.onrender.com/
 
 **Made by Zahi Najmal, an young, aspiring, curious Tech Enthusiast.**
+# Zahicraftv2
