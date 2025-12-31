@@ -492,7 +492,6 @@
         let socket = null;
         let remotePlayers = {}; // { playerId: PlayerEntity }
         let currentLobbyName = null;
-        const SERVER_URL = 'http://localhost:3000'; // Change this to your deployed server URL
 
         // Block Selection
         let selectedBlockType = "grass";
@@ -1031,7 +1030,8 @@
                 return;
             }
 
-            socket = io(SERVER_URL);
+            // Connect to same origin (works for both localhost and Render deployment)
+            socket = io();
 
             socket.on('connect', () => {
                 console.log('Connected to server');
