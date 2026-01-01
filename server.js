@@ -33,6 +33,7 @@ io.on('connection', (socket) => {
 
     let currentLobby = null;
     let playerName = `Player${Math.floor(Math.random() * 1000)}`;
+    let playerColor = '#45b7d1'; // Default color
 
     // Create a new lobby
     socket.on('create-lobby', (data) => {
@@ -56,10 +57,15 @@ io.on('connection', (socket) => {
             blocks: []
         };
 
+        // Get player customization
+        if (data.playerName) playerName = data.playerName;
+        if (data.playerColor) playerColor = data.playerColor;
+
         currentLobby = lobbyName;
         lobbies[lobbyName].players[socket.id] = {
             id: socket.id,
             name: playerName,
+            color: playerColor,
             position: { x: 0, y: 20, z: 0 },
             rotation: { x: 0, y: 0 }
         };
@@ -90,10 +96,15 @@ io.on('connection', (socket) => {
             return;
         }
 
+        // Get player customization
+        if (data.playerName) playerName = data.playerName;
+        if (data.playerColor) playerColor = data.playerColor;
+
         currentLobby = lobbyName;
         lobbies[lobbyName].players[socket.id] = {
             id: socket.id,
             name: playerName,
+            color: playerColor,
             position: { x: 0, y: 20, z: 0 },
             rotation: { x: 0, y: 0 }
         };
@@ -114,6 +125,7 @@ io.on('connection', (socket) => {
         socket.to(lobbyName).emit('player-joined', {
             playerId: socket.id,
             playerName: playerName,
+            playerColor: playerColor,
             position: { x: 0, y: 20, z: 0 },
             rotation: { x: 0, y: 0 }
         });

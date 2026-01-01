@@ -350,6 +350,27 @@
             border-color: #fff;
             box-shadow: 0 0 8px #fff, inset -4px -4px #222, inset 4px 4px #888;
         }
+
+        /* Color Picker */
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #333;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+            border-color: #fff;
+        }
+
+        .color-option.active-color {
+            border-color: #fff;
+            box-shadow: 0 0 12px #fff, 2px 2px 4px rgba(0, 0, 0, 0.5);
+            transform: scale(1.15);
+        }
     </style>
 </head>
 
@@ -381,6 +402,38 @@
     <!-- Multiplayer Menu -->
     <div id="multiplayer-menu" style="display: none;">
         <h2 style="font-size: 50px; color: #fff; text-shadow: 4px 4px #000; margin-bottom: 30px;">Multiplayer</h2>
+
+        <!-- Player Customization -->
+        <div style="margin-bottom: 20px;">
+            <input type="text" id="player-name-input" placeholder="Enter Your Name" maxlength="16"
+                style="width: 100%; padding: 12px; font-family: 'VT323', monospace; font-size: 24px; 
+                background: #4e4e4e; border: 2px solid #000; color: #e0e0e0; box-shadow: inset -4px -4px #222, inset 4px 4px #888; margin-bottom: 10px;">
+        </div>
+
+        <!-- Color Picker -->
+        <div style="margin-bottom: 20px;">
+            <div style="color: #fff; font-size: 20px; margin-bottom: 10px; text-shadow: 2px 2px #000;">Choose Skin
+                Color:</div>
+            <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                <div class="color-option" data-color="#ff6b6b" style="background: #ff6b6b;"
+                    onclick="selectColor('#ff6b6b')"></div>
+                <div class="color-option" data-color="#4ecdc4" style="background: #4ecdc4;"
+                    onclick="selectColor('#4ecdc4')"></div>
+                <div class="color-option active-color" data-color="#45b7d1" style="background: #45b7d1;"
+                    onclick="selectColor('#45b7d1')"></div>
+                <div class="color-option" data-color="#f9ca24" style="background: #f9ca24;"
+                    onclick="selectColor('#f9ca24')"></div>
+                <div class="color-option" data-color="#6c5ce7" style="background: #6c5ce7;"
+                    onclick="selectColor('#6c5ce7')"></div>
+                <div class="color-option" data-color="#a29bfe" style="background: #a29bfe;"
+                    onclick="selectColor('#a29bfe')"></div>
+                <div class="color-option" data-color="#fd79a8" style="background: #fd79a8;"
+                    onclick="selectColor('#fd79a8')"></div>
+                <div class="color-option" data-color="#fdcb6e" style="background: #fdcb6e;"
+                    onclick="selectColor('#fdcb6e')"></div>
+            </div>
+        </div>
+
         <div style="margin-bottom: 20px;">
             <input type="text" id="lobby-name-input" placeholder="Enter Lobby Name"
                 style="width: 100%; padding: 12px; font-family: 'VT323', monospace; font-size: 24px; 
@@ -492,6 +545,10 @@
         let socket = null;
         let remotePlayers = {}; // { playerId: PlayerEntity }
         let currentLobbyName = null;
+
+        // Player Customization
+        let selectedPlayerColor = '#45b7d1'; // Default blue
+        let playerName = `Player${Math.floor(Math.random() * 1000)}`; // Default random name
 
         // Block Selection
         let selectedBlockType = "grass";
@@ -626,7 +683,7 @@
 
         // --- PLAYER ENTITY CLASS ---
         class PlayerEntity {
-            constructor(playerId, playerName, scene) {
+            constructor(playerId, playerName, scene, playerColor = null) {
                 this.playerId = playerId;
                 this.playerName = playerName;
                 this.scene = scene;
@@ -634,27 +691,27 @@
                 // Create player model (Minecraft-style)
                 this.group = new THREE.Group();
 
-                // Random color for this player
+                // Use provided color or random
                 const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf9ca24, 0x6c5ce7, 0xa29bfe, 0xfd79a8, 0xfdcb6e];
-                const playerColor = colors[Math.floor(Math.random() * colors.length)];
+                const color = playerColor ? parseInt(playerColor.replace('#', '0x')) : colors[Math.floor(Math.random() * colors.length)];
 
                 // Head (8x8x8 scaled down to 0.4x0.4x0.4)
                 const headGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-                const headMat = new THREE.MeshLambertMaterial({ color: playerColor });
+                const headMat = new THREE.MeshLambertMaterial({ color: color });
                 this.head = new THREE.Mesh(headGeo, headMat);
                 this.head.position.y = 0.7; // Above body
                 this.group.add(this.head);
 
                 // Body (8x12x4 scaled to 0.4x0.6x0.2)
                 const bodyGeo = new THREE.BoxGeometry(0.4, 0.6, 0.2);
-                const bodyMat = new THREE.MeshLambertMaterial({ color: playerColor });
+                const bodyMat = new THREE.MeshLambertMaterial({ color: color });
                 this.body = new THREE.Mesh(bodyGeo, bodyMat);
                 this.body.position.y = 0.3;
                 this.group.add(this.body);
 
                 // Arms (4x12x4 scaled to 0.2x0.6x0.2 each)
                 const armGeo = new THREE.BoxGeometry(0.15, 0.5, 0.15);
-                const armMat = new THREE.MeshLambertMaterial({ color: playerColor });
+                const armMat = new THREE.MeshLambertMaterial({ color: color });
 
                 this.leftArm = new THREE.Mesh(armGeo, armMat);
                 this.leftArm.position.set(-0.275, 0.25, 0);
@@ -666,7 +723,7 @@
 
                 // Legs (4x12x4 scaled to 0.2x0.6x0.2 each)
                 const legGeo = new THREE.BoxGeometry(0.15, 0.5, 0.15);
-                const legMat = new THREE.MeshLambertMaterial({ color: playerColor });
+                const legMat = new THREE.MeshLambertMaterial({ color: color });
 
                 this.leftLeg = new THREE.Mesh(legGeo, legMat);
                 this.leftLeg.position.set(-0.1, -0.25, 0);
@@ -723,11 +780,40 @@
             }
 
             update(delta) {
-                // Smooth interpolation
-                this.group.position.lerp(this.targetPosition, delta * 10);
+                // Improved smooth interpolation (faster for less teleporting)
+                const lerpSpeed = Math.min(delta * 15, 0.5); // Cap max lerp to prevent overshooting
+                this.group.position.lerp(this.targetPosition, lerpSpeed);
 
                 // Rotate to face direction
-                this.group.rotation.y += (this.targetRotation.y - this.group.rotation.y) * delta * 10;
+                this.group.rotation.y += (this.targetRotation.y - this.group.rotation.y) * lerpSpeed;
+
+                // Ground alignment - prevent floating
+                // Cast ray down from player position to find ground
+                const tempRaycaster = new THREE.Raycaster();
+                tempRaycaster.set(
+                    new THREE.Vector3(this.group.position.x, this.group.position.y + 2, this.group.position.z),
+                    new THREE.Vector3(0, -1, 0)
+                );
+                tempRaycaster.far = 10; // Check up to 10 blocks down
+
+                // Get all blocks (we need to access the global objects array)
+                const hits = tempRaycaster.intersectObjects(objects);
+                if (hits.length > 0) {
+                    // Find first solid block (not water/lava)
+                    const solidHit = hits.find(h =>
+                        h.object.userData.type !== 'water' &&
+                        h.object.userData.type !== 'lava'
+                    );
+
+                    if (solidHit) {
+                        // Snap to ground level with a small offset
+                        const groundLevel = solidHit.point.y;                        // Instead of instantly snapping, lerp towards ground for smooth adjustment
+                        const targetY = groundLevel;
+                        if (Math.abs(this.group.position.y - targetY) > 0.1) {
+                            this.group.position.y += (targetY - this.group.position.y) * delta * 8;
+                        }
+                    }
+                }
 
                 // Simple walking animation
                 const speed = this.targetPosition.distanceTo(this.group.position);
@@ -988,6 +1074,16 @@
             document.getElementById('main-menu').style.display = 'flex';
         }
 
+        // Color selection function
+        window.selectColor = function (color) {
+            selectedPlayerColor = color;
+            // Update UI
+            document.querySelectorAll('.color-option').forEach(opt => {
+                opt.classList.remove('active-color');
+            });
+            document.querySelector(`.color-option[data-color="${color}"]`).classList.add('active-color');
+        }
+
         window.createLobby = function () {
             const lobbyName = document.getElementById('lobby-name-input').value.trim();
             if (!lobbyName) {
@@ -995,9 +1091,13 @@
                 return;
             }
 
+            // Get player customization
+            const nameInput = document.getElementById('player-name-input').value.trim();
+            if (nameInput) playerName = nameInput;
+
             isMultiplayer = true;
             connectToServer(() => {
-                socket.emit('create-lobby', { lobbyName });
+                socket.emit('create-lobby', { lobbyName, playerName, playerColor: selectedPlayerColor });
             });
         }
 
@@ -1008,16 +1108,24 @@
                 return;
             }
 
+            // Get player customization
+            const nameInput = document.getElementById('player-name-input').value.trim();
+            if (nameInput) playerName = nameInput;
+
             isMultiplayer = true;
             connectToServer(() => {
-                socket.emit('join-lobby', { lobbyName });
+                socket.emit('join-lobby', { lobbyName, playerName, playerColor: selectedPlayerColor });
             });
         }
 
         window.quickPlay = function () {
+            // Get player customization
+            const nameInput = document.getElementById('player-name-input').value.trim();
+            if (nameInput) playerName = nameInput;
+
             isMultiplayer = true;
             connectToServer(() => {
-                socket.emit('join-lobby', { lobbyName: '' }); // Empty = quickplay
+                socket.emit('join-lobby', { lobbyName: '', playerName, playerColor: selectedPlayerColor }); // Empty = quickplay
             });
         }
 
@@ -1064,7 +1172,7 @@
 
             socket.on('player-joined', (data) => {
                 console.log('Player joined:', data);
-                addRemotePlayer(data.playerId, data.playerName, data.position, data.rotation);
+                addRemotePlayer(data.playerId, data.playerName, data.position, data.rotation, data.playerColor);
             });
 
             socket.on('player-left', (data) => {
@@ -1110,7 +1218,7 @@
                 for (const playerId in lobbyData.players) {
                     if (playerId !== socket.id) {
                         const player = lobbyData.players[playerId];
-                        addRemotePlayer(playerId, player.name, player.position, player.rotation);
+                        addRemotePlayer(playerId, player.name, player.position, player.rotation, player.color);
                     }
                 }
             }
@@ -1132,10 +1240,10 @@
             simulateLoading();
         }
 
-        function addRemotePlayer(playerId, playerName, position, rotation) {
+        function addRemotePlayer(playerId, playerName, position, rotation, playerColor) {
             if (remotePlayers[playerId]) return; // Already exists
 
-            const player = new PlayerEntity(playerId, playerName, scene);
+            const player = new PlayerEntity(playerId, playerName, scene, playerColor);
             player.updatePosition(position.x, position.y, position.z, rotation.x, rotation.y);
             remotePlayers[playerId] = player;
         }
@@ -1438,8 +1546,8 @@
 
             // 2. Multiplayer Updates
             if (isMultiplayer && socket && socket.connected && gameStarted) {
-                // Send position updates (throttled to ~20 times per second)
-                if (!window.lastPositionUpdate || time - window.lastPositionUpdate > 50) {
+                // Send position updates (increased to ~30 times per second for smoother sync)
+                if (!window.lastPositionUpdate || time - window.lastPositionUpdate > 33) {
                     socket.emit('update-position', {
                         x: camera.position.x,
                         y: camera.position.y,
